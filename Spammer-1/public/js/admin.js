@@ -16,22 +16,41 @@ function clearForm() {
   idInput.value = '';
 }
 
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+}
+
 async function loadContacts() {
   const response = await fetch('/api/contacts');
   const contacts = await response.json();
 
-  tbody.innerHTML = contacts.map((contact) => `
-    <tr>
-      <td>${contact.lastName}</td>
-      <td>${contact.firstName}</td>
-      <td>${contact.middleName}</td>
-      <td>${contact.email}</td>
-      <td>
-        <button class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${contact._id}">Змінити</button>
-        <button class="btn btn-sm btn-outline-danger" data-action="delete" data-id="${contact._id}">Видалити</button>
-      </td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = contacts.map((contact) => {
+    const letters = `${contact.lastName[0] || ''}${contact.firstName[0] || ''}`.toUpperCase();
+    const colors = ['#0f6cbd', '#c239b3', '#107c10', '#d83b01', '#5c2e91', '#038387'];
+    const seed = `${contact.lastName}${contact.firstName}`.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    const color = colors[seed % colors.length];
+    return `
+      <tr class="person-row">
+        <td>
+          <div class="person">
+            <span class="avatar" style="background:${color}">${letters}</span>
+            <span class="person-copy">
+              <span class="person-name">${escapeHtml(contact.lastName)} ${escapeHtml(contact.firstName)} ${escapeHtml(contact.middleName)}</span>
+              <span class="person-email">${escapeHtml(contact.email)}</span>
+            </span>
+          </div>
+        </td>
+        <td class="person-actions">
+          <button class="btn-line" type="button" data-action="edit" data-id="${contact._id}">Змінити</button>
+          <button class="btn-danger" type="button" data-action="delete" data-id="${contact._id}">Видалити</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
 form.addEventListener('submit', async (event) => {

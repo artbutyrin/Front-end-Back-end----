@@ -22,6 +22,16 @@ const templates = [
   function selectedIds() {
     return [...contactsList.querySelectorAll('input[type="checkbox"]:checked')].map((input) => input.value);
   }
+
+  function initials(contact) {
+    return escapeHtml(`${contact.lastName[0] || ''}${contact.firstName[0] || ''}`.toUpperCase());
+  }
+
+  function avatarColor(contact) {
+    const colors = ['#0f6cbd', '#c239b3', '#107c10', '#d83b01', '#5c2e91', '#038387'];
+    const seed = `${contact.lastName}${contact.firstName}`.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    return colors[seed % colors.length];
+  }
   
   templates.forEach((template, index) => {
     const option = document.createElement('option');
@@ -44,10 +54,14 @@ const templates = [
     const response = await fetch('/api/contacts');
     const contacts = await response.json();
     contactsList.innerHTML = contacts.map((contact) => `
-      <li class="list-group-item">
-        <label class="d-flex align-items-center gap-2 mb-0">
-          <input class="form-check-input mt-0" type="checkbox" value="${contact._id}" ${selected.has(contact._id) ? 'checked' : ''}>
-          <span>${escapeHtml(contact.lastName)} ${escapeHtml(contact.firstName)} ${escapeHtml(contact.middleName)} — ${escapeHtml(contact.email)}</span>
+      <li class="mail-row">
+        <label>
+          <input class="form-check-input" type="checkbox" value="${contact._id}" ${selected.has(contact._id) ? 'checked' : ''}>
+          <span class="avatar" style="background:${avatarColor(contact)}">${initials(contact)}</span>
+          <span class="mail-row-body">
+            <span class="mail-row-name">${escapeHtml(contact.lastName)} ${escapeHtml(contact.firstName)} ${escapeHtml(contact.middleName)}</span>
+            <span class="mail-row-email">${escapeHtml(contact.email)}</span>
+          </span>
         </label>
       </li>
     `).join('');
@@ -104,7 +118,13 @@ const templates = [
       })
     });
     const data = await response.json();
-    result.textContent = JSON.stringify(data, null, 2);
+    if (!response.ok) {
+      result.innerHTML = `<div class="send-status send-status-error">${escapeHtml(data.error || 'Помилка відправки')}</div>`;
+      return;
+    }
+
+    const lines = (data.messages || []).map((message) => `<li>${escapeHtml(message.email)}</li>`).join('');
+    result.innerHTML = `<div class="send-status"><strong>Надіслано: ${data.sent}</strong><ul>${lines}</ul></div>`;
   });
   
   loadContacts();
